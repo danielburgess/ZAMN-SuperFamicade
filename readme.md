@@ -14,3 +14,6 @@ What's next:
 - Graphical Changes for "Arcade Mode"
 - Code Changes for "Arcade Mode" (May include options for difficulty, # lives per coin-up, etc.)
 - Support second player join-in
+
+Note:
+I've included my project files for SynWrite (https://sourceforge.net/projects/synwrite/) as well as a custom Lexer for 65816 Assembly (should be xkas 0.06 compatible).
