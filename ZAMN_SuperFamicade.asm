@@ -71,12 +71,12 @@ rep 40 : nop ;TODO: need to add more nops since i've skipped the next transfer
 
 ; Hijacking death (lives--) code for hud generation
 org $80cec5
-jml $82F9A0
+jml @playerdeathentry
 nop
 
 ; Hijack beginning of level...
 org $80866A
-jml $82F980
+jml @levelentry
 
 ;hijacking high score table build...
 org $82bb13
@@ -89,20 +89,21 @@ jml @xferscore
 rep 2 : nop
 
 org $82F980
+levelentry:
 lda #$0001  ;entry point for beginning of level
 sta !mapType
 lda #$0000
 sta !p2StartDrawn
 jmp @makelifemap
 
-org $82F9A0
+playerdeathentry:
 lda #$0000  ; entry point for death
 sta !mapType
 jmp @makelifemap
 
 ; This section actually generates the lives counter
 makelifemap:
-txa ;transfer the player index...
+txa ; transfer the player index...
 sta !playerIndex ; store the player currently being handled (0,2) [P1,P2]
 cmp #$0002
 bne @p1map
@@ -267,9 +268,9 @@ jmp @endmapgen
 
 
 makescoretable:
-lda $700010
-cmp #$0666 ;check to see if the table is already written
-beq @writewram
+lda $700010 ; this tells me if I've initialized the table before
+cmp #$0666 ; check to see if the table is already written
+beq @writewram ; if it exists, copy the sram table to wram
 
 lda #$0000
 sta $700000
@@ -280,17 +281,17 @@ lda #$07fe
 mvn $7070 ;clear sram
 
 ldx #$bb2e
-ldy #$2064
+ldy #$0020 ;#$2064
 lda #$00BC ;instead of just $95, transfer $BC
-mvn $827e
+mvn $8270 ;7e
 
-ldx #$2064
-ldy #$0020
-lda #$00BC
-mvn $7e70
+;ldx #$2064
+;ldy #$0020
+;lda #$00BC
+;mvn $7e70
 
-lda #$0666
-sta $700010 ;table now exists
+lda #$0666  ; this is the value I check for on game start
+sta $700010 ; table now exists
 
 writewram:
 ldx #$0020
@@ -355,7 +356,7 @@ sta $4305 	; DMA Transfer Size Register (Set number of bytes to transfer)
 
 lda #$66e2 	; *Modified* (#$6440) #$6422 <-TOP of Screen
 sta $2116 	; VRAM Address register 
-			      ; (Not sure why, but this Transfer actually writes to $C822...)
+			      ; (Not sure why, but this Transfer actually writes to $CAE2...)
 
 sep #$20  	; Set CPU flag... 8-bit mode
 
