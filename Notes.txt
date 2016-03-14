@@ -1,0 +1,99 @@
+Arcade Credits Display for ZAMN
+BG3..........More later
+
+
+"LIVES:2"
+9b3c983ca53c943ca23c8f3c093c
+
+VRAM Address: C844
+Write 
+073C=0
+083C-0F3C = 1-9
+903C-?? = ABCDEF
+90=A
+91=B
+92=C
+93=D
+94=E
+95=F
+96=G
+97=H
+98=I
+99=J
+9A=K
+9B=L
+9C=M
+9D=N
+9E=O
+9F=P
+A0=@
+A1=R
+A2=S
+A3=T
+A4=U
+A5=V
+A6=W
+A7=X
+A8=Y
+A9=Z
+LIVES 000
+
+
+Original HUD tilemap is created @ $7e5f36 for #$c0 bytes
+
+I need to hyjack the routine that builds this section in 
+memory (holds the tilemap) in order to write extra info into the HUD
+
+; Zombies ate my Neighbors Original HUD writer
+; Below is the section the performs the DMA transfer of this data into VRAM:
+
+80c34a lda #$1801	; #$01 <- 2 registers, write once
+					; (writes to low and high register)
+					; #$18 <- Specify B-Bus register to access.. $00:2118 - (VRAM Data write register)
+80c34d sta $4300 	;Write to DMA control register and Destination Channel
+
+80c350 lda #$5f36
+80c353 sta $4302 	; DMA Transfer Source Address
+					; (DMA control was set earlier to 2 registers, write once)
+					; ^^Write #$36 to $4302 and #$5f to $4303
+
+80c356 lda #$007e 	; #$7e is the bank of the source data being transferred
+					; ^^^^ This is a WRAM bank
+80c359 sta $4304  	; DMA Transfer Source Bank Register
+
+80c35c lda #$00c0  	; <---Specifying size of transfer
+80c35f sta $4305 	; DMA Transfer Size Register (Set number of bytes to transfer)
+
+80c362 lda #$6440 	; 
+80c365 sta $2116 	; VRAM Address register 
+					; (Not sure why, but this Transfer actually writes to $C880...)
+
+80c368 sep #$20  	; Set CPU flag... 8-bit mode
+
+80c36a lda #$80  	; (1000 0000) <- Sets Address increment mode
+					;  ^ Increments after $2119 (high byte) 
+					;    is written to desination.
+					;   ^^^ These 3 Bits are unused
+					;       ^^ No address remapping
+					;         ^^ Normal increment by one
+80c36c sta $2115  	; Write #$80 (10000000) to Video Port Control 
+					
+80c36f lda #$01 	
+80c371 sta $420b  	; Enable DMA Channel #1 (commence transfer)
+
+80c374 rep #$30   	; Back to 16-bit mode
+
+;END OF CODE
+
+
+
+
+Address for storing number of lives left (P1?):
+$7e1d4c
+For some reason... this is $801d4c in bsnes-plus trace log...
+
+
+Will hijack jsl @ 80c2da
+
+
+
