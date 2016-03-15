@@ -1,5 +1,5 @@
 ; Purpose: Zombies ate my Neighbors Modified HUD writer, Blood Hack, High Score Save
-; Date: 09,10,12 March 2016
+; Date: 09,10,12,14 March 2016
 ; Author: DackR
 lorom
 
@@ -272,8 +272,8 @@ lda $700010 ; this tells me if I've initialized the table before
 cmp #$0666 ; check to see if the table is already written
 beq @writewram ; if it exists, copy the sram table to wram
 
-lda #$0000
-sta $700000
+;lda #$0000
+;sta $700000
 
 ldx #$0000
 ldy #$0001
