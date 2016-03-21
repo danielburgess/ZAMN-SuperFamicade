@@ -6,9 +6,10 @@ Here's what is implemented so far:
 - Game Over Blood Hack
 - HUD is customized to show "Lives:#"
 - HUD is moved to the bottom of the screen
+- Basic support for P1 coin-up in-game
 
 What's next:
-- Support extra input for the SuperFamicade Controller Board
+- Additional support for extra input for the SuperFamicade Controller Board
 	(make support switchable - always on until other features are implemented)
 	(SuperFamicade/SFC Controller Board project here: https://hackaday.io/project/3121-super-famicade)
 - Graphical Changes for "Arcade Mode"
