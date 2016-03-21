@@ -24,7 +24,34 @@ tax
 lda $81f9,x
 and #$00ff
 sta $74   
+;end of p2 read
 jsr $843d   ; Not sure what this subroutine does...
 lda $0e     ; seems unrelated
 beq $8474   ; maybe a counter that transitions the screen??...
 rts    
+
+; Joypad evaluation routine for Title Screen (ZAMN Start/Password Menu)
+org $8096f9 ; This is for player 1 joypad data
+lda $006e   ; this is where keypresses are stored
+bit $62     ; $c62 - Comparing the current keypress to the last keypress
+bne $970e   ; if the keypress is the same, branch to p2
+sta $62     ; $c62 - Store the last keypress
+cmp #$0000  ; Was anything pressed?
+beq $970e   ; if keypress=0, move to p2
+bit #$d0c0  ; a key was pressed... AND (look for ABXY, START) bits...
+bne $9735   ; if we match the bits above...
+            ; the next routine loads the creepy laughing 
+            ; and changes to the character select screen
+
+;this is pretty much identical to the above
+org $80970e
+lda $0070   ;Player 2 button presses are here
+bit $64     ;$64
+bne $9741
+sta $64     ;$64
+cmp #$0000
+beq $9741
+bit #$d0c0  ; a key was pressed... AND (look for ABXY, START) bits...
+bne $9735   ; if we match the bits above...
+            ; the next routine loads the creepy laughing 
+            ; and changes to the character select screen

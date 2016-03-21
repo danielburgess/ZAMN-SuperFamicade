@@ -96,4 +96,68 @@ For some reason... this is $801d4c in bsnes-plus trace log...
 Will hijack jsl @ 80c2da
 
 
+Timer addition notes:
+Requires 3 bytes- one that increments on vblank (decimal mode).
+The other two bytes (word value- in decimal mode) are set during the level
+  start and decrement when the counter byte overflows. 
 
+
+
+Sound Values During Title Screen:
+#$0001 = Teleport Fade out?
+#$0002 = Decoy Laugh
+#$0003 = Password Reveal Sound
+#$0004 = Crusifix use
+#$0005 = Password Accepted
+#$0006 = Bazooka Explosion
+#$0007 = Level Ended Music
+#$0008 = Death Music
+#$0009 = Power-up Obtained
+#$000A = Pop Can Fizz Noise
+#$000B = Squirt gun Noise
+#$000C = Tinkling Noise
+#$000D = Radar Display sound
+#$000E = Item Get
+#$000F = Weed-whacker sound
+#$0010 = Door Open Sound (Name input sound)
+#$0011 = Martian bubble gun 
+#$0012 = Item Select
+#$0013 = Door Locked noise
+#$0014 = Weed-whacker hit sound
+#$0015 = Weed-whacker hit sound #2
+#$0016 = Low-pitch explosion
+#$0017 = Clipped squirt gun
+#$0018 = Pop Can explosion
+#$0019 = Fart noise
+#$001A = Ooze drop noise - doppleganger appear
+#$001B = Trampolene
+#$001C = Annoying UFO noise
+#$001D = "Owww!"
+#$001E = Short Tinkling sound
+#$001F = Ooze drop, pop can explode
+#$0020 = Short Crumbly-explosion
+#$0021 = Longer Explosion
+#$0022 = Beast Mad Growl
+#$0023 = Longer Beast Growl
+#$0024 = Victim Killed Noise
+#$0025 = Thump
+#$0026 = Evil Cackle Higher-Pitch
+#$0027 = Evil Cackle Standard
+#$0028 = Evil Cackle Similar to Evil Doll
+#$0029 = Thumping Noise
+#$002A = Creeky thump
+#$002B = Weak thud
+#$002C = Belch-like "Nope"
+#$002D = Thump
+#$002E = Pop-splosion
+#$002F = Weed-whacker slimey sound
+
+
+Memory Addresses:
+P1 Keypresses: $00006e
+P2 Keypresses: $000070
+
+P1 Lives: $7e1d4c ($801d4c)
+P2 Lives: $7e1d4e ($801d4e)
+
+P1 Score: $001e72 (decimal mode)

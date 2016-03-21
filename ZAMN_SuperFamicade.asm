@@ -1,5 +1,5 @@
 ; Purpose: Zombies ate my Neighbors Modified HUD writer, Blood Hack, High Score Save
-; Date: 09,10,12,14 March 2016
+; Date: 09,10,12,14,20 March 2016
 ; Author: DackR
 lorom
 
@@ -11,6 +11,8 @@ lorom
 !playerLives = $7e1d4c
 !mapType = $7e1d48
 !tileDefLoc = $7e5efa
+!playsndsub = $80cc3b ;set A (sfxid) and jsl to this address
+!lastcredit = $7e1d3e
 
 !lifeTable = $ff50
 !lifeTiles = $ff70
@@ -27,6 +29,9 @@ db $01
 
 org $96F121
 incbin .\bin\0xB7121.bin
+
+org $8FCC00
+incbin .\bin\0x7CC00_InsertCoin.bin
 
 ;life number table
 org $ff50
@@ -64,7 +69,7 @@ sta $2122
 org $9E9026
 db $15,$00,$13,$00,$0F,$00,$0C,$00,$09,$00
 
-;Adding some code to the DMA transfer...
+;Adding some code to the HUD DMA transfer...
 org $80c34a ; 44 bytes long (2C)
 jml @dmahud
 rep 40 : nop ;TODO: need to add more nops since i've skipped the next transfer
@@ -74,9 +79,32 @@ org $80cec5
 jml @playerdeathentry
 nop
 
+; This is the keypress evaluation routine
+org $8089b0
+jml @evaluatekeys
+nop
+nop
+;return to $8089b6
+
 ; Hijack beginning of level...
 org $80866A
 jml @levelentry
+
+; Hijack 1up routine
+org $80fa68
+jml @oneupentry
+
+; Palette change for 1p or 2p modes
+org $80873f
+jml @palchange
+
+; Music change for 1p or 2p modes
+org $82ac56
+jml @musicchange
+
+;Change press start to insert coin... conditionally... this is gonna suck
+;org $80b960
+;jml @gfxdma
 
 ;hijacking high score table build...
 org $82bb13
@@ -88,7 +116,17 @@ org $82bd2f
 jml @xferscore
 rep 2 : nop
 
+;slight noise change...
+org $809735
+lda #$0026
+
 org $82F980
+p1coinupentry:
+lda #$0003
+sta !mapType
+ldx #$0000
+jmp @makelifemap
+
 levelentry:
 lda #$0001  ;entry point for beginning of level
 sta !mapType
@@ -99,6 +137,16 @@ jmp @makelifemap
 playerdeathentry:
 lda #$0000  ; entry point for death
 sta !mapType
+jmp @makelifemap
+
+oneupentry:
+phy
+lda $001e72 ;this will force the GUI to update
+inc a
+sta $001e72
+lda #$0002
+sta !mapType
+ldx $0e ; this is the variable the game uses for the player index
 jmp @makelifemap
 
 ; This section actually generates the lives counter
@@ -126,6 +174,9 @@ bcs @numgen
 rep 2 : iny
 jmp @repeatmap
 
+p1coinup:
+jml @normalkeys
+
 ;generate map for lives left # here...
 numgen:
 txy
@@ -146,18 +197,23 @@ bpl @incloop            ; number of lives less than 9 (since we haven't -- yet)
 bmi @foundplus          ; number of lives is greater than 9
 
 endmapgen:
+lda #$0003 ;p1 coin-up
+cmp !mapType
+beq @p1coinup
+lda #$0002 ;found one-up
+cmp !mapType
+beq @oneupinc
 lda #$0000
 cmp !mapType		  ; **this varaible contains 0=death, 1=lvl start
 bne @levelstart   ; if this isnt generated from a death, then branch w/o --
                   ; otherwise... its a death.
 isdeath:
 ldx !playerIndex
-sep #$20
 lda !playerLives,x		; **this is the game variable for # of lives left
+cmp #$0000
+beq @isneg ; only game over if we are about to go negative
 dec a			            ; --
 sta !playerLives,x		; **this is the game variable for # of lives left
-rep #$30
-bmi @isneg
 jml $80ceca ;Return back to the main routine
 
 foundzero:
@@ -175,6 +231,16 @@ ldx #$0002
 lda #$0001
 sta !p2StartDrawn
 jml @makelifemap
+
+foundnum:
+tyx
+jsr @numstore
+jmp @endmapgen
+
+foundplus:	; Number of lives is greater than 9... kinda lazy
+tyx
+jsr @numstoreplus
+jmp @endmapgen
 
 levelstart:
 ldx !playerIndex
@@ -200,15 +266,17 @@ beq @drawp2tiles ;map up player two
 alldonestart:
 jml $80c2da ;back to level start
 
-foundnum:
-tyx
-jsr @numstore
-jmp @endmapgen
-
-foundplus:	; Number of lives is greater than 9... kinda lazy
-tyx
-jsr @numstoreplus
-jmp @endmapgen
+oneupinc:
+;phx
+;phy
+;lda #$0666
+;sta !aVar
+;jml @startdma ;force dma transfer??
+oneupdone:
+ply
+ldx $0e
+lda $001d4c,x
+jml $80fa6e
 
 store:	; store the tile definition in WRAM
 sta !tileDefLoc,x
@@ -220,8 +288,22 @@ numstore:	; pretty much like "store", but handles numbers
 dec a
 dec a
 adc #$3c07	; adding the value of the tile representing "0"
-clc			    ; clear carry because... we dont want anything extra next adc
-adc !mapType ; add one if we are starting the level!!
+   			    ; clear carry because... we dont want anything extra next adc
+sta !aVar
+lda !mapType ; add one if we are starting the level!!
+cmp #$0001
+bcs @addone
+
+lda !aVar
+bra @addnone
+
+addone:
+lda !aVar
+clc
+adc #$0001
+bra @addnone
+
+addnone:
 cmp #$3c11	; ****this might need to be modified...
 bcs @numstoreplus ; if we have more than 9 now.. do 9+ 
 sta !tileDefLoc,x
@@ -356,7 +438,7 @@ sta $4305 	; DMA Transfer Size Register (Set number of bytes to transfer)
 
 lda #$66e2 	; *Modified* (#$6440) #$6422 <-TOP of Screen
 sta $2116 	; VRAM Address register 
-			      ; (Not sure why, but this Transfer actually writes to $CAE2...)
+			      ; (Because of BGmode 3, this Transfer actually writes to $CAE2...)
 
 sep #$20  	; Set CPU flag... 8-bit mode
 
@@ -373,8 +455,15 @@ sta $420b  	; Enable DMA Channel #1 (commence transfer)
 
 rep #$30   	; Back to 16-bit mode
 
+lda !aVar
+cmp #$0666
+beq @returnsub
+
 jml $80c376
 ;END OF HUD WRITER CODE
+
+returnsub:
+jml @oneupdone
 
 ;COPY SCORE TO SRAM!
 xferscore:
@@ -391,4 +480,141 @@ plb
 plb
 rts
 
-;next hijack the high score save...so it saves in wram and sram
+;we will be mixing up the palletes for some levels (co-op)
+palchange:
+cpx #$9060 ; should mean this is level one... maybe
+beq @palswap
+
+lda $9f0010,x
+bra @palswapdone
+
+palswap:
+lda $7e1d4e
+cmp #$0002
+bne @changedmymind
+lda #$9176
+bra @palswapdone
+
+changedmymind:
+lda $9f0010,x
+
+palswapdone:
+jml $808743
+
+musicchange:
+cpx #$9060 ; should mean this is level one... maybe
+beq @musicswap
+
+lda $9f0032,x
+bra @musicchangedone
+
+musicswap:
+lda $7e1d4e
+cmp #$0002
+bne @nomusicchange
+lda #$000A
+bra @musicchangedone
+
+nomusicchange:
+lda $9f0032,x
+
+musicchangedone:
+jml $82ac5a
+
+;hyjacking the dma of most sprites, backgrounds so we can redirect certain gfx
+;gfxdma:
+;cpy #$0040
+;beq @
+;lda $15de,x ;source address, low byte, high byte
+;sta $4302  
+;lda $165e,x ;source address, bank byte (word form)
+;sta $4304  
+;sty $4305   ; y holds the size of the transfer... (looks like it depends on a different table)
+;lda $16de,x ; vram address (low, high bytes)
+;sta $2116   ; this is the vram address register.
+;sep #$20    ;to 8-bit mode 
+;lda #$01   
+;sta $420b   ;enable DMA  
+;rep #$20    ;16-bit mode 
+;lda $16de,x 
+;ora #$0100  ;possiblility of making a second copy in vram?
+;sta $2116  
+;sty $4305  
+;sep #$20   
+;lda #$01   
+;sta $420b  
+;rep #$20   
+;inx  
+;inx   
+;cpx $7c
+;bne @gfxdma
+
+;phy
+;lda $15de,x
+;cmp #$8780
+;bne @pressstart ; will add more conditions checking jumpers
+                ; for now, just show...
+;ldy $165e,x
+;cpy #$008e
+;bne @pressstart ; will add more conditions checking jumpers
+                ; for now, just show...
+
+;lda #$CC00
+;sta $4302       ;source register (we are doing a conditional dma to vram)
+;lda #$008F
+;sta $4304       ;source bank register
+;ply
+;bra @coindone
+
+;pressstart:
+;ply
+;lda $15de,x
+;sta $4302
+;lda $165e,x
+;sta $4304
+;
+;coindone:
+;jml $80b999
+
+;Check for "Special Keypresses"
+evaluatekeys:
+phy
+phx
+sei
+lda $006e
+and #$000f
+cmp #$0000
+beq @normalkeys
+and #$0001
+cmp #$0001
+beq @ekp1coinup
+bra @storenorm
+
+ekp1coinup:
+cmp !lastcredit
+beq @storenorm
+sed
+clc
+lda $001e72
+adc #$0001
+sta $001e72
+cld
+
+lda #$0027
+jsl !playsndsub
+clc
+lda $7e1d4c
+adc #$0001
+sta $7e1d4c
+jml @p1coinupentry
+
+storenorm:
+sta !lastcredit
+
+normalkeys:
+cli
+plx
+ply
+lda $006e
+ora $0070
+jml $8089b6
