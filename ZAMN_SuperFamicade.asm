@@ -124,7 +124,7 @@ org $82F980
 p1coinupentry:
 lda #$0003
 sta !mapType
-ldx #$0000
+ldx #$0000    ;this is the player index we need
 jmp @makelifemap
 
 levelentry:
@@ -141,12 +141,15 @@ jmp @makelifemap
 
 oneupentry:
 phy
-lda $001e72 ;this will force the GUI to update
-inc a
-sta $001e72
+ldx $0e       ; this is the variable the game uses for the player index
+sed           ; set decimal mode
+clc           ; clear carry flag
+lda $001e72,x ; load the current score
+adc #$0001    ; add one (decimal mode)
+sta $001e72,x ; this will force the GUI to update.. just adding 1 to score.
+cld           ; turn off decimal mode
 lda #$0002
 sta !mapType
-ldx $0e ; this is the variable the game uses for the player index
 jmp @makelifemap
 
 ; This section actually generates the lives counter
@@ -576,7 +579,7 @@ jml $82ac5a
 ;coindone:
 ;jml $80b999
 
-;Check for "Special Keypresses"
+;Check for "Special Keypresses" while in-game
 evaluatekeys:
 phy
 phx
@@ -600,7 +603,7 @@ adc #$0001
 sta $001e72
 cld
 
-lda #$0027
+lda #$000e  ;changed sound to one used by all levels. should play consistently.
 jsl !playsndsub
 clc
 lda $7e1d4c

@@ -11,7 +11,7 @@ UserVars=
 MasksInc=
 MasksExc=exe,dll,lnk,zip,rar
 Folded=0,3,5,
-SelItem=6
+SelItem=8
 
 [Nodes]
 \:bin
