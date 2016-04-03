@@ -12,7 +12,7 @@ lorom
 !mapType = $7e1d48
 !tileDefLoc = $7e5efa
 !playsndsub = $80cc3b ;set A (sfxid) and jsl to this address
-!lastcredit = $7e1d3e
+!lastcredit = $7e1d3e ;(last credit status for p1 and p2)
 
 !lifeTable = $ff50
 !lifeTiles = $ff70
@@ -72,7 +72,7 @@ db $15,$00,$13,$00,$0F,$00,$0C,$00,$09,$00
 ;Adding some code to the HUD DMA transfer...
 org $80c34a ; 44 bytes long (2C)
 jml @dmahud
-rep 40 : nop ;TODO: need to add more nops since i've skipped the next transfer
+rep 40 : nop ;TODO: should add more nops since i've skipped the next transfer
 
 ; Hijacking death (lives--) code for hud generation
 org $80cec5
@@ -106,17 +106,17 @@ jml @musicchange
 ;org $80b960
 ;jml @gfxdma
 
-;hijacking high score table build...
+;hijacking high score table initialization in wram...
 org $82bb13
 jml @makescoretable
 rep 8 : nop
 
-;hijacking score save!
+;hijacking high score save!
 org $82bd2f
 jml @xferscore
 rep 2 : nop
 
-;slight noise change...
+;slight noise change... just for fun
 org $809735
 lda #$0026
 
@@ -362,7 +362,7 @@ beq @writewram ; if it exists, copy the sram table to wram
 
 ldx #$0000
 ldy #$0001
-lda #$07fe
+lda #$07fe ; the number of bytes to clear
 mvn $7070 ;clear sram
 
 ldx #$bb2e
@@ -376,13 +376,57 @@ mvn $8270 ;7e
 ;mvn $7e70
 
 lda #$0666  ; this is the value I check for on game start
-sta $700010 ; table now exists
+sta $700010 ; table now exists (if there is SRAM)
+
+;CHECK IF LOROM OR HIROM
+lda $700010 ; this is the LOROM SRAM location
+cmp #$0666 ; check to see if the table was successfully written
+beq @writewram ; if it exists, copy the sram table to wram
+
+;THE SRAM WRITE FAILED - TRY HIROM MAPPING
+lda $206010 ; this is the HIROM SRAM location for the first 8kb
+cmp #$0666 ; check to see if the table is already written
+beq @writehiwram ; if it exists, copy the sram table to wram
+
+ldx #$6000 ;start source
+ldy #$6001 ;start destination
+lda #$07fe ; the number of bytes to clear
+mvn $2020 ;clear sram
+
+ldx #$bb2e
+ldy #$6020 ;#$2064
+lda #$00BC ;instead of just $95, transfer $BC
+mvn $8220 ;7e
+
+lda #$0666  ; this is the value I check for on game start
+sta $206010 ; table now exists (if there is SRAM)
+
+;CHECK TO SEE IF HIROM SRAM write was successful--!
+lda $206010 ; this is the HIROM SRAM location for the first 8kb
+cmp #$0666 ; check to see if the table is there
+bne @nosram ; if it exists, copy the sram table to wram
+
+writehiwram:
+ldx #$6020
+ldy #$2064
+lda #$00BC
+mvn $207e
+
+jml $82bb2b ; back to the main init routine
 
 writewram:
 ldx #$0020
 ldy #$2064
 lda #$00BC
 mvn $707e
+
+jml $82bb2b ;$82bb1f ; jump back to main init routine
+
+nosram: ;if there is no SRAM, copy the high score table from ROM to WRAM
+ldx #$bb2e
+ldy #$2064 ;#$2064
+lda #$00BC ;instead of just $95, transfer $BC
+mvn $827e ;7e
 
 jml $82bb2b ;$82bb1f ; jump back to main init routine
 
@@ -584,31 +628,33 @@ evaluatekeys:
 phy
 phx
 sei
-lda $006e
-and #$000f
-cmp #$0000
-beq @normalkeys
-and #$0001
-cmp #$0001
-beq @ekp1coinup
-bra @storenorm
+lda $006e       ;location for last P1 keypress
+and #$000f      ;we need the last 8 bits
+cmp #$0000      ;is it zero?
+beq @normalkeys ;not a coin-up, return to normal routine
+and #$0001      ;now check to see if the first bit is set (other checks will be here later)
+cmp #$0001      ;is coin-up bit set?
+beq @ekp1coinup ;then branch to p1 coin-up eval routine 
+bra @storenorm  ;store the bit value and continue processing 
 
 ekp1coinup:
 cmp !lastcredit
 beq @storenorm
 sed
 clc
-lda $001e72
-adc #$0001
-sta $001e72
+lda $001e72 ;player 1's score...
+adc #$0001  ;increment by one (decimal mode)
+sta $001e72 ;when this changes, it forces the HUD to update (temporary until i figure out how to trigger this otherwise)
 cld
 
 lda #$000e  ;changed sound to one used by all levels. should play consistently.
 jsl !playsndsub
 clc
-lda $7e1d4c
-adc #$0001
-sta $7e1d4c
+lda $7e1d4c ;This is player 1's lives
+adc #$0001  ;Coin was inserted... this will have more jumper options later
+sta $7e1d4c ;store the incremented entry
+;NEXT SAVE TOTAL ACTIVE CREDITS IN SRAM (to be shared between games)
+
 jml @p1coinupentry
 
 storenorm:

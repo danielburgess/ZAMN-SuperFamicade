@@ -10,11 +10,12 @@ SearchDirs=
 UserVars=
 MasksInc=
 MasksExc=exe,dll,lnk,zip,rar
-Folded=0,3,5,
+Folded=0,1,4,6,
 SelItem=8
 
 [Nodes]
 \:bin
+.\{Proj}\bin\0x7CC00_InsertCoin.bin
 .\{Proj}\bin\0xB7121.bin
 \:Command
 .\{Proj}\build.cmd
