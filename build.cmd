@@ -4,5 +4,5 @@ del .\out\ZAMN_SuperFamicade.sfc
 echo Copying original (Base) ROM...
 copy ".\base\Zombies Ate My Neighbors (USA).sfc" .\out\ZAMN_SuperFamicade.sfc
 echo Building...
-..\Tools\xkas\xkas.exe ZAMN_SuperFamicade.asm .\out\ZAMN_SuperFamicade.sfc
+..\Tools\xkas-plus\xkas.exe -o .\out\ZAMN_SuperFamicade.sfc ZAMN_SuperFamicade.asm
 echo Done.

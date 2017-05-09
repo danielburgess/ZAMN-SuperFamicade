@@ -11,7 +11,7 @@ lda $4218   ; Load P1 Controller data
 sta $6e     ; store it at address $00006e
 xba         ; exchange high-low bytes
 and #$000f  ; appears to be checking directional buttons
-tax         ; x to a                         (na,r-,l-,na,d-,rd,ld,na,u-,ru,lu,na,na,na,na,na)
+tax         ; a to x                         (na,r-,l-,na,d-,rd,ld,na,u-,ru,lu,na,na,na,na,na)
 lda $81f9,x ; $8081f9 - possible values: 0-f (00,06,0e,00,0a,08,0c,00,02,04,10,00,00,00,00,00,40) 
 and #$00ff  ; kill the high byte             (00,01,02,03,04,05,06,07,08,09,0A,0B,0C,0D,0E,0F)
 sta $72     ; store it here... $000072--- holds the direction(s) being pressed
@@ -33,9 +33,9 @@ rts
 ; Joypad evaluation routine for Title Screen (ZAMN Start/Password Menu)
 org $8096f9 ; This is for player 1 joypad data
 lda $006e   ; this is where keypresses are stored
-bit $62     ; $c62 - Comparing the current keypress to the last keypress
+bit $62     ; $62 - Comparing the current keypress to the last keypress
 bne $970e   ; if the keypress is the same, branch to p2
-sta $62     ; $c62 - Store the last keypress
+sta $62     ; $62 - Store the last keypress
 cmp #$0000  ; Was anything pressed?
 beq $970e   ; if keypress=0, move to p2
 bit #$d0c0  ; a key was pressed... AND (look for ABXY, START) bits...

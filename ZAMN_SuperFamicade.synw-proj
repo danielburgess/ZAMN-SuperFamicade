@@ -10,8 +10,8 @@ SearchDirs=
 UserVars=
 MasksInc=
 MasksExc=exe,dll,lnk,zip,rar
-Folded=0,1,4,6,
-SelItem=8
+Folded=0,1,4,7,
+SelItem=6
 
 [Nodes]
 \:bin
@@ -19,16 +19,18 @@ SelItem=8
 .\{Proj}\bin\0xB7121.bin
 \:Command
 .\{Proj}\build.cmd
+.\{Proj}\build_bass.cmd
 \:Notes
 .\{Proj}\joypad_read_routine.asm
 .\{Proj}\Notes.txt
 \{Proj}\ZAMN_SuperFamicade.asm
+\{Proj}\ZAMN_SuperFamicade_BASS.asm
 [Tools]
-C1="Build"
-Ex1="C:\Users\Administrator\Google Drive\ZAMN\build.cmd"
-Dir1="C:\Users\Administrator\Google Drive\ZAMN"
+C1="Bass Build"
+Ex1="C:\Google Drive\ZAMN\build_bass.cmd"
+Dir1="C:\Google Drive\ZAMN"
 Par1=""
-Lex1=Assembly 65816c
+Lex1=
 Key1=
 Re1=""
 S1=1,0,0,0,2,0,0,toPanel,1
@@ -40,14 +42,14 @@ Lex2=
 Key2=
 Re2=""
 S2=0,0,0,0,0,0,0,toPanel,1
-C3=""
-Ex3=""
-Dir3=""
+C3="OLD Build"
+Ex3="C:\Users\Administrator\Google Drive\ZAMN\build.cmd"
+Dir3="C:\Users\Administrator\Google Drive\ZAMN"
 Par3=""
-Lex3=
+Lex3=Assembly 65816c
 Key3=
 Re3=""
-S3=0,0,0,0,0,0,0,toPanel,1
+S3=1,0,0,0,2,0,0,toPanel,1
 C4=""
 Ex4=""
 Dir4=""

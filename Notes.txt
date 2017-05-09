@@ -154,10 +154,37 @@ Sound Values During Title Screen:
 
 
 Memory Addresses:
-P1 Keypresses: $00006e
-P2 Keypresses: $000070
+P1 Current Keypress- $00006e
+P1 Last Keypress-    $000062
 
-P1 Lives: $7e1d4c ($801d4c)
-P2 Lives: $7e1d4e ($801d4e)
+P2 Current Keypress- $000070
+P2 Last Keypress-    $000064
 
-P1 Score: $001e72 (decimal mode)
+P1 Lives- $7e1d4c ($801d4c)
+P2 Lives- $7e1d4e ($801d4e)
+
+P1 Score- $001e72 (decimal mode)
+
+P1 Water Gun Shots- $7e1ccc,d (decimal mode)
+
+Difficulty Modes:
+Mostly effect number of lives per coin. Also starting number of starting lives/shots.
+
+
+
+
+Jumper Settings: (only check during bootup)
+P1:
+000 = Console Mode - Arcade Mode Off
+001 = Easy Mode
+010 = Medium Mode
+011 = Hard Mode
+100 = Expert Mode
+101 = Easy mode with 1-ups enabled
+110 = Medium mode with 1-ups
+111 = Hard mode with 1-ups
+
+P2:
+000 
+
+
