@@ -18,4 +18,4 @@ I'm working on a special hack for Zombies Ate My Neighbors, originally released 
 - Support second player join-in
 
 ## Note:
-I've included my project files for SynWrite (https://sourceforge.net/projects/synwrite/) as well as a custom Lexer for 65816 Assembly (should be xkas 0.06 compatible -- ).
+Removed Synwrite lexer. Will be moving to new repo.
