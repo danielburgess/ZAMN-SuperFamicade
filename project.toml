@@ -1,0 +1,22 @@
+# ZAMN Super Famicade — retrotool build spec
+#
+#   retrotool build .                 -> out/ZAMN_SuperFamicade.sfc
+#   retrotool build . --diff ips      -> also emits an IPS patch next to the ROM
+#
+# The base ROM (base/zamn.sfc) is the unmodified "Zombies Ate My Neighbors
+# (USA)" LoROM image. It is never modified in place — every build starts from
+# a pristine copy.
+
+[rom]
+name = "ZAMN_SuperFamicade"
+file = "base/zamn.sfc"
+mapping = "lorom"
+size = "1M"
+
+[rom.build]
+output_dir = "out"
+
+# The whole hack is one asar patch (converted from the old xkas-plus source).
+[[rom.build.sections]]
+kind = "asar"
+file = "src/superfamicade.asm"

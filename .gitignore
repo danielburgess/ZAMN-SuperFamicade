@@ -1,0 +1,6 @@
+.idea/
+.cache/
+out/*.sfc
+out/*.ips
+out/*.xdelta
+base/*.sfc
