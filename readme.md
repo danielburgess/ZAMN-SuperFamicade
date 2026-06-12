@@ -29,8 +29,8 @@ retrotool build . --diff ips     # also emits out/ZAMN_SuperFamicade.sfc.ips
 
 The hack source lives in `src/superfamicade.asm` (asar dialect). The legacy
 sources (`ZAMN_SuperFamicade.asm` xkas-plus, `ZAMN_SuperFamicade_xkas.asm`
-xkas v06, `build.cmd`/`debug.cmd`) are kept for reference but are no longer
-the build path.
+xkas v06, `build.cmd`/`debug.cmd`) are kept under `src/old/` for reference but
+are no longer the build path.
 
 Conversion notes (xkas-plus -> asar):
 - `define x`/`{x}` became `!x = `/`!x`

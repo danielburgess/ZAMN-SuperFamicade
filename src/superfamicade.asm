@@ -27,12 +27,22 @@ lorom
 !demoSceneChecker = $7e5ee6
 !PlayerIndex = $7e5ee8
 !mapType = $7e5eea
+!lastp1keys = $7e5eec ;P1 last-keypress, for coin-up edge detection.
+                      ;MUST be long-addressed: evaluatekeys runs with D=$0C00,
+                      ;so the original direct-page "$62" hit $0C62:$0C63 and
+                      ;corrupted live game state (player went blue-potion/
+                      ;upside-down on water transitions while holding buttons).
+;(free: $7e5eee-$7e5ef9)
 !playerLives = $7e1d4c ;game variable -- do not move
 !tileDefLoc = $7e5efa
 !playsndsub = $80cc3b ;set A (sfxid) and jsl to this address
 
-!lifeTable = $ff50
-!lifeTiles = $ff70
+; NOTE: $00FF50-$00FF8B is NOT free -- it is the tail of a live animation
+; table the game reads via LDA ($14),Y at $80F303/$80F317 (reaches $80FF52+).
+; The old hack's lifeTable values there read as harmless deltas; our larger
+; border-tile words corrupted player animation (blue-blob/upside-down on
+; water transitions). The border tables now live in bank $82 freespace as
+; labels (faceTile / hdmaTbl, end of file); p1's box is written inline.
 !livesTileMap = $ffa0
 !demoTileMap = $ffb0
 
@@ -50,17 +60,8 @@ incbin "../bin/0xB7121.bin"
 org $8fcc00
 incbin "../bin/0x7CC00_InsertCoin.bin"
 
-;life number table
-org $00ff50 ;!lifeTable
-db $00,$00,$01,$00,$02,$00,$03,$00,$04,$00,$05,$00,$06,$00,$07,$00
-db $08,$00,$09,$00,$0A,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-; tiles corresponding to life numbers
-;org $00ff70 ;!lifeTiles
-db $3C,$07,$00,$00,$3C,$08,$00,$00,$3C,$09,$00,$00,$3C,$0A,$00,$00
-db $3C,$0B,$00,$00,$3C,$0C,$00,$00,$3C,$0D,$00,$00,$3C,$0E,$00,$00
-db $3C,$0F,$00,$00,$3C,$10,$00,$00,$3C,$10,$3C,$8E,$3C,$10,$3C,$8E
-; number of tiles, and tile defs for LIVES:
-;org $00ffa0 ;!livesTileMap
+; number of tiles, and tile defs for LIVES: (still used by the P2 legacy text)
+org $00ffa0 ;!livesTileMap
 db $0c,$00,$9B,$3C,$98,$3C,$A5,$3C,$94,$3C,$A2,$3C,$8F,$3C,$00,$00
 ; tile definition for DEMO MODE
 ;org $00ffb0 ;!demoTileMap
@@ -137,6 +138,16 @@ jml xferscore
 org $809735
 lda #$0026
 
+;hook the NMI's INIDISP-from-shadow write (LDA $136C / STA $2100 at $0081AB):
+;runs only on real rendered frames (the lag-frame/loading early-out path is
+;upstream), and the shadow's bit7 tells us forced blank -- never re-arm HDMA
+;while the game has the screen blanked for loading (doing so fired stale
+;HDMA tables over the level-intro screens)
+org $8081AB
+jml nmithunk
+nop
+nop
+
 org $82f980
 p1coinupentry:
 lda #$0003
@@ -145,6 +156,7 @@ ldx #$0000    ;this is the player index we need
 jmp makelifemap
 
 levelentry:
+jsr drawstatic ;face tile + static border cells (level load = screen blanked)
 lda #$0001  ;entry point for beginning of level
 sta !mapType
 lda #$0000
@@ -171,36 +183,56 @@ jmp makelifemap
 
 ; This section actually generates the lives counter
 makelifemap:
+jsr drawsides ; border side edges for HUD rows 24-26 (idempotent)
 txa ; transfer the player index...
 sta !PlayerIndex ; store the player currently being handled (0,2) [P1,P2]
 cmp #$0002
 bne p1map
 beq p2map
-p1map:
-ldx #$0000
-jmp anymap
-p2map:
-ldx #$0020
-jmp anymap
-anymap:
-ldy #$0002 ; start reading past the number
 
+p1map: ; P1: bordered box top edge (cols 2-15), face + count in the break.
+       ; Written inline (no ROM table) -- store is long-addressed/DBR-safe, and
+       ; this keeps the data out of the game's animation-table region. Border
+       ; = pal4 greyscale ($30xx), break caps v-flipped ($B0B7/$F0B7), face +
+       ; count stay pal7 ($3Cxx). Dest cells land at tileDefLoc+0,2,4,...,1A.
+ldx #$0000
+lda #$30B1 : jsr store ; col2  h-edge
+lda #$B0B7 : jsr store ; col3  break cap (left)
+lda #$3CC0 : jsr store ; col4  FACE icon
+lda #$3C00 : jsr store ; col5  count cell (overwritten by numgen, offset 6)
+lda #$F0B7 : jsr store ; col6  break cap (right)
+lda #$30B1 : jsr store ; col7  h-edge
+lda #$30B1 : jsr store ; col8
+lda #$30B1 : jsr store ; col9
+lda #$30B1 : jsr store ; col10
+lda #$30B1 : jsr store ; col11
+lda #$30B1 : jsr store ; col12
+lda #$30B1 : jsr store ; col13
+lda #$30B1 : jsr store ; col14
+lda #$70B0 : jsr store ; col15 top-right corner
+ldy #$0006 ; fixed buffer offset of the count cell inside the break
+jmp numgen
+
+p2map: ; P2: legacy LIVES:n text for now (P2 box is milestone 2)
+ldx #$0020
+ldy #$0002 ; start reading past the number
 repeatmap: ; copy the Lives: tiles to RAM
 lda !livesTileMap,y
 jsr store
-;tay ;temporarily copy a->y
 cpy !livesTileMap ;are we at the last tile?
-bcs numgen
+bcs p2digit
 iny
 iny
 jmp repeatmap
+p2digit:
+txy ; legacy behavior: digit goes right after the text
+jmp numgen
 
 p1coinup:
 jml normalkeys
 
-;generate map for lives left # here...
+;generate map for lives left # here... (Y = buffer offset for the digit)
 numgen:
-txy
 lda !PlayerIndex       ; use current player index
 tax
 lda #$0000
@@ -308,6 +340,86 @@ inx
 inx
 rts
 
+drawsides: ; greyscale border side edges, HUD rows 24-26 cols 0 and 15
+lda #$30B2
+sta.l $7e5f36
+sta.l $7e5f76
+sta.l $7e5fb6
+lda #$70B2
+sta.l $7e5f54
+sta.l $7e5f94
+sta.l $7e5fd4
+rts
+
+drawstatic: ; level start (screen blanked): face tile + border cells the
+            ; HUD DMA window never covers (row 23 cols 0-1, all of row 27)
+php
+sep #$20
+lda #$80
+sta $2115 ; increment on $2119 write
+rep #$20
+ldy #$4600 ; face icon -> VRAM tile $C0
+sty $2116
+ldx #$0000
+facecopy:
+lda.l faceTile,x
+sta $2118
+inx
+inx
+cpx #$0010
+bcc facecopy
+ldy #$66e0 ; row 23 cols 0-1: top-left corner + h-edge
+sty $2116
+lda #$30b0
+sta $2118
+lda #$30b1
+sta $2118
+ldy #$6760 ; row 27: bottom edge, corners v-flipped
+sty $2116
+lda #$b0b0
+sta $2118
+ldx #$000e
+botloop:
+lda #$b0b1
+sta $2118
+dex
+bne botloop
+lda #$f0b0
+sta $2118
+plp
+rts
+
+nmithunk: ; NMI rendered-frame path, vblank, 8-bit M, registers saved
+lda.l $7e136c ; INIDISP shadow (displaced original: LDA $136C / STA $2100)
+sta.l $002100
+bmi nmiskip   ; bit7 = forced blank (loading) -> leave HDMA untouched
+rep #$20
+lda #$2801
+sta.l $004310 ; ch1: mode 1, B-bus $2128/$2129
+lda.w #hdmaTbl
+sta.l $004312 ; HDMA source addr (low 16)
+sep #$20
+lda.b #hdmaTbl>>16
+sta.l $004314 ; HDMA source bank ($82)
+lda.l $7e136e
+ora #$02
+sta.l $00420c ; HDMA enable: game's channels + our ch1, re-armed every frame
+nmiskip:
+jml $8081b1   ; resume the NMI body (M stays 8-bit on both paths)
+
+; --- border data tables (relocated to bank $82 freespace; see note at top) ---
+; face icon (2bpp): orange hair / skin / black eyes, drawn into VRAM tile $C0
+faceTile:
+db $00,$7E,$00,$FF,$6C,$93,$7E,$81,$7E,$28,$7E,$00,$3C,$18,$18,$00
+; HDMA table for ch1, mode 1 -> $2128/$2129 (color window 2 left/right):
+; W2 empty except scanlines 189-215 = [7,120], the box interior (user-tuned).
+hdmaTbl:
+db $7F,$FF,$00 ; lines 0-126: empty
+db $3E,$FF,$00 ; lines 127-188: empty
+db $1B,$07,$78 ; lines 189-215: W2=[7,120] (+1px L/R, +3px top)
+db $08,$FF,$00 ; lines 216-223: empty
+db $00
+
 numstore:	; pretty much like "store", but handles numbers
 dec
 dec
@@ -333,11 +445,7 @@ bcs numstoreplus ; if we have more than 9 now.. do 9+
 sta !tileDefLoc,x
 inx
 inx
-lda #$0000
-sta !tileDefLoc,x
-inx
-inx
-rts
+rts ; (old zero-terminator removed -- it would wipe the break's right cap)
 
 numstoreplus:
 lda #$3c10
@@ -470,6 +578,7 @@ jmp repeatdemo
 dmahud:
 phx ;cause I dont know if it's in use...
 phy ;cause I dont know if it's in use...
+jsr drawsides ;every frame: the game's HUD builder rebuilds $5F36 and wipes them
 lda !PlayerIndex
 cmp #$0000
 bne startdma
@@ -651,10 +760,11 @@ phy
 phx
 sei
 checkp1keys:
-lda $006e       ;location for last P1 keypress
-bit $62         ; $62 - Comparing the current keypress to the last keypress
-bne normalkeys ; If the value is the same as last keypress, then skip evaluation
-sta $62        ; $62 - Store the last keypress
+lda $006e          ;current P1 keypress (absolute $006E -- D-independent)
+and.l !lastp1keys  ;replicate BIT: Z = (current & last) == 0 (no BIT long mode)
+bne normalkeys     ;shares bits with last keypress -> treat as held, skip
+lda $006e          ;reload current (AND clobbered A)
+sta.l !lastp1keys  ;store last keypress in SAFE long-addressed RAM (was "$62")
 and #$000f      ;we need the last 8 bits
 cmp #$0000      ;is it zero?
 beq normalkeys ;not a coin-up, return to normal routine
